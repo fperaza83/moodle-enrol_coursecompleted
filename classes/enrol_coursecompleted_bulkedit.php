@@ -23,10 +23,9 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace enrol_coursecompleted;
+defined('MOODLE_INTERNAL') || die();
 
 // @codeCoverageIgnoreStart
-defined('MOODLE_INTERNAL') || die();
 require_once($CFG->dirroot . '/enrol/locallib.php');
 // @codeCoverageIgnoreEnd
 
@@ -38,7 +37,8 @@ require_once($CFG->dirroot . '/enrol/locallib.php');
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class bulkedit extends \enrol_bulk_enrolment_operation {
+class enrol_coursecompleted_bulkedit extends enrol_bulk_enrolment_operation {
+
     /**
      * Returns the identifier for this bulk operation. This is the key used when the plugin
      * returns an array containing all of the bulk operations it supports.
@@ -62,27 +62,27 @@ class bulkedit extends \enrol_bulk_enrolment_operation {
      * Returns a enrol_bulk_enrolment_operation extension form to be used
      * in collecting required information for this operation to be processed.
      *
-     * @param string|\moodle_url|null $defaultaction
+     * @param string|moodle_url|null $defaultaction
      * @param mixed $defaultcustomdata
-     * @return \enrol_coursecompleted\bulkedit_form
+     * @return enrol_coursecompleted_deleteselectedusers_form
      */
     public function get_form($defaultaction = null, $defaultcustomdata = null) {
         $data = is_array($defaultcustomdata) ? $defaultcustomdata : [];
         $data['title'] = $this->get_title();
         $data['message'] = get_string('confirmbulkediteenrolment', 'enrol_coursecompleted');
         $data['button'] = get_string('editusers', 'enrol_coursecompleted');
-        return new form\bulkedit($defaultaction, $data);
+        return new \enrol_coursecompleted\form\bulkedit($defaultaction, $data);
     }
 
     /**
      * Processes the bulk operation request for the given userids with the provided properties.
      *
-     * @param \course_enrolment_manager $manager
+     * @param course_enrolment_manager $manager
      * @param array $users
-     * @param \stdClass $properties The data returned by the form.
+     * @param stdClass $properties The data returned by the form.
      * @return bool
      */
-    public function process(\course_enrolment_manager $manager, array $users, \stdClass $properties): bool {
+    public function process(course_enrolment_manager $manager, array $users, stdClass $properties) {
         global $DB, $USER;
         $context = $manager->get_context();
         if (!has_capability("enrol/coursecompleted:manage", $context)) {
@@ -106,32 +106,32 @@ class bulkedit extends \enrol_bulk_enrolment_operation {
                 $event->trigger();
             }
         }
-        [$ueidsql, $params] = $DB->get_in_or_equal($ueids, SQL_PARAMS_NAMED);
+        list($ueidsql, $params) = $DB->get_in_or_equal($ueids, SQL_PARAMS_NAMED);
         if ($properties->status == ENROL_USER_ACTIVE || $properties->status == ENROL_USER_SUSPENDED) {
             $updatesql[] = 'status = :status';
-            $params['status'] = $properties->status;
+            $params['status'] = (int)$properties->status;
         }
         if (!empty($properties->timestart)) {
             $updatesql[] = 'timestart = :timestart';
-            $params['timestart'] = $properties->timestart;
+            $params['timestart'] = (int)$properties->timestart;
         }
         if (!empty($properties->timeend)) {
             $updatesql[] = 'timeend = :timeend';
-            $params['timeend'] = $properties->timeend;
+            $params['timeend'] = (int)$properties->timeend;
         }
         if (empty($updatesql)) {
             return true;
         }
 
         $updatesql[] = 'modifierid = :modifierid';
-        $params['modifierid'] = $USER->id;
+        $params['modifierid'] = (int)$USER->id;
 
         $updatesql[] = 'timemodified = :timemodified';
         $params['timemodified'] = time();
 
         $updatesql = join(', ', $updatesql);
         $sql = "UPDATE {user_enrolments} SET $updatesql WHERE id $ueidsql";
-        \cache::make('core', 'coursecontacts')->delete($context->instanceid);
+        cache::make('core', 'coursecontacts')->delete($context->instanceid);
         return (bool)$DB->execute($sql, $params);
     }
 }

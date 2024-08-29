@@ -34,7 +34,8 @@ namespace enrol_coursecompleted;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \enrol_coursecompleted_plugin
  */
-final class manager_test extends \advanced_testcase {
+class manager_test extends \advanced_testcase {
+
     /** @var stdClass Instance. */
     private $instance;
 
@@ -47,7 +48,7 @@ final class manager_test extends \advanced_testcase {
     /**
      * Tests initial setup.
      */
-    protected function setUp(): void {
+    protected function setUp():void {
         global $CFG, $DB;
         $CFG->enablecompletion = true;
         $this->resetAfterTest(true);
@@ -64,7 +65,10 @@ final class manager_test extends \advanced_testcase {
         $plugin = enrol_get_plugin('coursecompleted');
         $id = $plugin->add_instance($course, ['customint1' => $this->course->id, 'roleid' => $studentrole->id]);
         $this->instance = $DB->get_record('enrol', ['id' => $id]);
-        $this->student = $generator->create_and_enrol($this->course, 'student');
+        $this->student = $generator->create_user();
+        $manualplugin = enrol_get_plugin('manual');
+        $instance = $DB->get_record('enrol', ['courseid' => $this->course->id, 'enrol' => 'manual'], '*', MUST_EXIST);
+        $manualplugin->enrol_user($instance, $this->student->id, $studentrole->id);
         mark_user_dirty($this->student->id);
     }
 
@@ -72,7 +76,7 @@ final class manager_test extends \advanced_testcase {
      * Test missing enrolid param.
      * @covers \enrol_coursecompleted_plugin
      */
-    public function test_manager_empty_param(): void {
+    public function test_manager_empty_param() {
         global $CFG;
         chdir($CFG->dirroot . '/enrol/coursecompleted');
         $this->expectException(\moodle_exception::class);
@@ -84,7 +88,7 @@ final class manager_test extends \advanced_testcase {
      * Test manager without permission.
      * @covers \enrol_coursecompleted_plugin
      */
-    public function test_manager_without_permission(): void {
+    public function test_manager_wrong_permission() {
         global $CFG;
         chdir($CFG->dirroot . '/enrol/coursecompleted');
         $this->setUser($this->student);
@@ -98,12 +102,13 @@ final class manager_test extends \advanced_testcase {
      * Test manager wrong permission.
      * @covers \enrol_coursecompleted_plugin
      */
-    public function test_manager_wrong_permission(): void {
+    public function test_manager_wrong_permission2() {
         global $CFG, $DB;
         chdir($CFG->dirroot . '/enrol/coursecompleted');
         $generator = $this->getDataGenerator();
-        $user = $generator->create_and_enrol($this->course, 'editingteacher');
+        $user = $generator->create_user();
         $role = $DB->get_record('role', ['shortname' => 'editingteacher']);
+        $generator->enrol_user($user->id, $this->course->id, $role->shortname);
         $context = \context_course::instance($this->course->id);
         assign_capability('enrol/coursecompleted:enrolpast', CAP_PROHIBIT, $role->id, $context);
         assign_capability('enrol/coursecompleted:unenrol', CAP_PROHIBIT, $role->id, $context);
@@ -122,7 +127,7 @@ final class manager_test extends \advanced_testcase {
      * @covers \enrol_coursecompleted\form\bulkedit
      * @covers \enrol_coursecompleted\form\bulkdelete
      */
-    public function test_manager_bare(): void {
+    public function test_manager_bare() {
         global $CFG;
         chdir($CFG->dirroot . '/enrol/coursecompleted');
         $_POST['enrolid'] = $this->instance->id;
@@ -133,45 +138,40 @@ final class manager_test extends \advanced_testcase {
     }
 
     /**
-     * Test manager old users.
+     * Test manager oldusers.
      * @covers \enrol_coursecompleted_plugin
      */
-    public function test_manager_old_users(): void {
-        global $CFG, $DB;
+    public function test_manager_oldusers() {
+        global $CFG;
         $this->preventResetByRollback();
         $this->setAdminUser();
-        $cc = new \stdClass();
-        $cc->userid = $this->student->id;
-        $cc->course = $this->course->id;
-        $cc->timestarted = time() - 100;
-        $cc->timeenrolled = 0;
-        $cc->timecompleted = time() - 50;
-        $DB->insert_record('course_completions', $cc);
+        $sink = $this->redirectEmails();
+        $sank = $this->redirectMessages();
+        $ccompletion = new \completion_completion(['course' => $this->course->id, 'userid' => $this->student->id]);
+        $ccompletion->mark_complete(time());
         chdir($CFG->dirroot . '/enrol/coursecompleted');
         $_POST['enrolid'] = $this->instance->id;
         ob_start();
         include($CFG->dirroot . '/enrol/coursecompleted/manage.php');
         $html = ob_get_clean();
         $this->assertStringNotContainsString('No users found', $html);
+        $sink->close();
+        $sank->close();
     }
 
     /**
      * Test submit manager oldusers.
      * @covers \enrol_coursecompleted_plugin
      */
-    public function test_manager_submit(): void {
-        global $CFG, $DB;
+    public function test_manager_submit() {
+        global $CFG;
         $this->preventResetByRollback();
         $this->setAdminUser();
         set_config('messaging', false);
-        $cc = new \stdClass();
-        $cc->userid = $this->student->id;
-        $cc->course = $this->course->id;
-        $cc->timestarted = time() - 100;
-        $cc->timeenrolled = 0;
-        $cc->timecompleted = time() - 50;
-        $DB->insert_record('course_completions', $cc);
-
+        $sink = $this->redirectEmails();
+        $sank = $this->redirectMessages();
+        $ccompletion = new \completion_completion(['course' => $this->course->id, 'userid' => $this->student->id]);
+        $ccompletion->mark_complete(time());
         chdir($CFG->dirroot . '/enrol/coursecompleted');
         $_POST['enrolid'] = $this->instance->id;
         $_POST['action'] = 'enrol';
@@ -179,14 +179,16 @@ final class manager_test extends \advanced_testcase {
         ob_start();
         include($CFG->dirroot . '/enrol/coursecompleted/manage.php');
         $html = ob_get_clean();
-        $this->assertStringContainsString('1 Users enrolled', $html);
+        $this->assertStringNotContainsString('No users found', $html);
+        $sink->close();
+        $sank->close();
     }
 
     /**
      * Tests settings.
      * @covers \enrol_coursecompleted_plugin
      */
-    public function test_enrol_courescompleted_settings(): void {
+    public function test_enrol_courescompleted_settings() {
         global $ADMIN, $CFG;
         require_once($CFG->dirroot . '/lib/adminlib.php');
         $ADMIN = admin_get_root(true, true);

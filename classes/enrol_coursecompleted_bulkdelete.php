@@ -23,13 +23,9 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace enrol_coursecompleted;
-
-use moodle_url;
-use stdClass;
+defined('MOODLE_INTERNAL') || die();
 
 // @codeCoverageIgnoreStart
-defined('MOODLE_INTERNAL') || die();
 require_once($CFG->dirroot . '/enrol/locallib.php');
 // @codeCoverageIgnoreEnd
 /**
@@ -40,7 +36,8 @@ require_once($CFG->dirroot . '/enrol/locallib.php');
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class bulkdelete extends \enrol_bulk_enrolment_operation {
+class enrol_coursecompleted_bulkdelete extends enrol_bulk_enrolment_operation {
+
     /**
      * Returns the identifier for this bulk operation. This is the key used when the plugin
      * returns an array containing all of the bulk operations it supports.
@@ -66,14 +63,14 @@ class bulkdelete extends \enrol_bulk_enrolment_operation {
      *
      * @param string|moodle_url|null $defaultaction
      * @param mixed $defaultcustomdata
-     * @return enrol_coursecompleted\form\bulkdelete
+     * @return enrol_coursecompleted_deleteselectedusers_form
      */
     public function get_form($defaultaction = null, $defaultcustomdata = null) {
         $data = is_array($defaultcustomdata) ? $defaultcustomdata : [];
         $data['title'] = $this->get_title();
         $data['message'] = get_string('confirmbulkdeleteenrolment', 'enrol_coursecompleted');
         $data['button'] = get_string('unenrolusers', 'enrol_coursecompleted');
-        return new form\bulkdelete($defaultaction, $data);
+        return new \enrol_coursecompleted\form\bulkdelete($defaultaction, $data);
     }
 
     /**
@@ -84,11 +81,10 @@ class bulkdelete extends \enrol_bulk_enrolment_operation {
      * @param stdClass $properties The data returned by the form.
      * @return bool
      */
-    public function process(\course_enrolment_manager $manager, array $users, stdClass $properties) {
+    public function process(course_enrolment_manager $manager, array $users, stdClass $properties) {
         if (!has_capability("enrol/coursecompleted:unenrol", $manager->get_context())) {
             return false;
         }
-
         foreach ($users as $user) {
             foreach ($user->enrolments as $enrolment) {
                 $plugin = $enrolment->enrolmentplugin;

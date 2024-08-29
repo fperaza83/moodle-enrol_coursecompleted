@@ -24,7 +24,7 @@
  */
 
 require_once("../../config.php");
-require_once($CFG->dirroot . '/enrol/coursecompleted/classes/plugin.php');
+require_once($CFG->dirroot . '/enrol/coursecompleted/lib.php');
 global $DB, $OUTPUT, $PAGE;
 
 $enrolid = required_param('enrolid', PARAM_INT);
@@ -58,40 +58,40 @@ echo $OUTPUT->heading(get_string('enrolusers', 'enrol'));
 
 if ($enrolid > 0) {
     $br = '<br>';
-    $current = get_enrolled_users($context, '', 0, 'u.id', 'id', 0, 0, true);
-    $candidates = enrol_coursecompleted_plugin::get_candidates($instance->customint1);
+    $condition = 'course = ? AND timecompleted > 0';
     if ($action === 'enrol') {
         require_sesskey();
-        foreach ($candidates as $candidate) {
-            if (!isset($current[$candidate])) {
+        if ($candidates = $DB->get_fieldset_select('course_completions', 'userid', $condition, [$instance->customint1])) {
+            foreach ($candidates as $candidate) {
                 $user = \core_user::get_user($candidate);
                 if (!empty($user) && !$user->deleted) {
-                    $enrol->enrol_user($instance, $candidate);
+                    $enrol->enrol_user($instance,
+                                       $candidate,
+                                       $instance->roleid,
+                                       $instance->enrolstartdate,
+                                       $instance->enrolenddate);
+                    \enrol_coursecompleted_plugin::keepingroup($instance, $candidate);
+                    mark_user_dirty($candidate);
                     echo '.';
                 }
             }
+            echo $br . $br . get_string('usersenrolled', 'enrol_coursecompleted', count($candidates));
+            $url = new \moodle_url('/enrol/instances.php', ['id' => $course->id]);
+            echo $br . $br . $OUTPUT->continue_button($url);
         }
-        echo $br . $br . get_string('usersenrolled', 'enrol_coursecompleted', count($candidates));
-        $url = new \moodle_url('/enrol/instances.php', ['id' => $course->id]);
-        echo $br . $br . $OUTPUT->continue_button($url);
     } else {
-        $allusers = [];
         $cancelurl = new \moodle_url('/enrol/instances.php', ['id' => $instance->courseid]);
-        foreach ($candidates as $candidate) {
-            if (!isset($current[$candidate])) {
+        if ($candidates = $DB->get_fieldset_select('course_completions', 'userid', $condition, [$instance->customint1])) {
+            $allusers = [];
+            foreach ($candidates as $candidate) {
                 $user = \core_user::get_user($candidate);
                 if (!empty($user) && !$user->deleted) {
-                    $allusers[$candidate] = fullname($user);
+                    $allusers[] = fullname($user);
                 }
             }
-        }
-        if (count($allusers) > 0) {
             $link = new \moodle_url($PAGE->url, ['enrolid' => $enrolid, 'action' => 'enrol', 'sesskey' => sesskey()]);
-            echo $OUTPUT->confirm(
-                implode(', ', $allusers),
-                new \single_button($link, get_string('manual:enrol', 'enrol_manual')),
-                $cancelurl
-            );
+            echo $OUTPUT->confirm(implode(', ', $allusers), new \single_button($link, get_string('manual:enrol', 'enrol_manual')),
+                $cancelurl);
         } else {
             echo $OUTPUT->box(get_string('nousersfound')) . $br . $OUTPUT->single_button($cancelurl, get_string('cancel'));
         }

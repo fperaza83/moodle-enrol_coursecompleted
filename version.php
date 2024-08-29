@@ -25,10 +25,10 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'enrol_coursecompleted';
-
-$plugin->requires = 2023042400;
+$plugin->requires = 2022041900;
 $plugin->maturity = MATURITY_STABLE;
-$plugin->supported = [402, 403];
-$plugin->release = 'v4.2.4';
-$plugin->version = 2024070900;
+$plugin->component = 'enrol_coursecompleted';
+$plugin->supported = [400, 403];
+$plugin->release = 'v4.1.1';
+$plugin->version = 2023110200;
+

@@ -25,15 +25,15 @@
 
 $string['aftercourse'] = 'After completing course: {$a}';
 $string['cachedef_compcourses'] = 'Enrolment on course completion cache';
+$string['coursecompleted:config'] = 'Configure enrol coursecompletion instances';
+$string['coursecompleted:manage'] = 'Manage enrolled users';
+$string['coursecompleted:enrolpast'] = 'Enrol users who completed courses in the past';
+$string['coursecompleted:unenrol'] = 'Unenrol users from course';
+$string['coursecompleted:unenrolself'] = 'Unenrol self from the course';
 $string['compcourse'] = 'Completed course';
 $string['compcourse_help'] = 'Which course have to be completed.';
 $string['confirmbulkdeleteenrolment'] = 'Are you sure you want to delete these user enrolments?';
 $string['confirmbulkediteenrolment'] = 'Are you sure you want to change these user enrolments?';
-$string['coursecompleted:config'] = 'Configure enrol coursecompletion instances';
-$string['coursecompleted:enrolpast'] = 'Enrol users who completed courses in the past';
-$string['coursecompleted:manage'] = 'Manage enrolled users';
-$string['coursecompleted:unenrol'] = 'Unenrol users from course';
-$string['coursecompleted:unenrolself'] = 'Unenrol self from the course';
 $string['customwelcome'] = 'Custom welcome message';
 $string['customwelcome_help'] = 'A custom welcome message may be added as plain text or Moodle-auto format, including HTML tags and multi-lang tags.
 
@@ -44,18 +44,9 @@ The following placeholders may be included in the message:
 * Link to user\'s profile page {$a->profileurl}
 * User email {$a->email}
 * User fullname {$a->fullname}';
-$string['defaultrole'] = 'Default role assignment';
-$string['defaultrole_desc'] = 'Select the role to assign to users when they are enrolled.';
 $string['deleteselectedusers'] = 'Delete selected enrolments on course completion';
 $string['editselectedusers'] = 'Edit selected enrolments on course completion';
 $string['editusers'] = 'Change user enrolments';
-$string['enrolenddate'] = 'End date';
-$string['enrolenddate_help'] = 'If enabled, users will be automatically enrolled until this date only.';
-$string['enrolperiod'] = 'Enrolment duration';
-$string['enrolperiod_desc'] = 'Default length of time that the enrolment is valid. If set to zero, the enrolment duration will be unlimited by default.';
-$string['enrolperiod_help'] = 'Length of time that the enrolment is valid, starting with the moment the user is enrolled. If disabled, the enrolment duration will be unlimited.';
-$string['enrolstartdate'] = 'Start date';
-$string['enrolstartdate_help'] = 'If enabled, users will only be enrolled automatically from this date onwards.';
 $string['group'] = 'Keep group';
 $string['group_help'] = 'Try to add users to a group with the same name';
 $string['keepgroup'] = 'Default keep group setting';
@@ -70,9 +61,9 @@ $string['status_help'] = 'This setting determines if the course completed enrolm
 $string['status_link'] = 'enrol/coursecompleted';
 $string['svglearnpath'] = 'Display learning path';
 $string['svglearnpath_help'] = 'Display (possible) learning path using svg icons.';
-$string['unenrolusers'] = 'Unenrol users';
 $string['uponcompleting'] = 'Upon completing course {$a}';
 $string['usersenrolled'] = '{$a} Users enrolled';
+$string['unenrolusers'] = 'Unenrol users';
 $string['welcome'] = 'Send course welcome message';
 $string['welcome_help'] = 'When a user is enrolled in a course by completing another course, a welcome message email may be sent.';
 $string['welcometocourse'] = 'Welcome to {$a->coursename}!

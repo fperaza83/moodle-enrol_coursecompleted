@@ -23,8 +23,6 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace enrol_coursecompleted;
-
 /**
  * Event observers
  *
@@ -33,7 +31,8 @@ namespace enrol_coursecompleted;
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class observer {
+class enrol_coursecompleted_observer {
+
     /**
      * Triggered when user completes a course.
      *
@@ -41,24 +40,37 @@ class observer {
      */
     public static function enroluser(\core\event\course_completed $event) {
         global $DB;
-        $sql = "SELECT *
-                  FROM {enrol}
-                 WHERE enrol = :enrol
-                       AND status = :status
-                       AND customint1 = :customint1
-                       AND (enrolstartdate = 0 OR enrolstartdate < :now1)
-                       AND (enrolenddate = 0 OR enrolenddate < :now2)";
-        $params = [
-            'enrol' => 'coursecompleted',
-            'status' => ENROL_INSTANCE_ENABLED,
-            'customint1' => $event->courseid,
-            'now1' => time(),
-            'now2' => time(),
-        ];
-
-        if ($enrols = $DB->get_records_sql($sql, $params)) {
+        $params = ['enrol' => 'coursecompleted', 'status' => 0, 'customint1' => $event->courseid];
+        if ($enrols = $DB->get_records('enrol', $params)) {
+            $plugin = \enrol_get_plugin('coursecompleted');
             foreach ($enrols as $enrol) {
-                \enrol_get_plugin('coursecompleted')->enrol_user($enrol, $event->relateduserid);
+                if ($DB->record_exists('role', ['id' => $enrol->roleid])) {
+                    // Invalid courses are already detected when context is calculated.
+                    if ($DB->record_exists('course', ['id' => $enrol->courseid])) {
+                        if ($enrol->enrolperiod > 0) {
+                            $enrol->enrolenddate = max(time(), $enrol->enrolstartdate) + $enrol->enrolperiod;
+                        }
+                        $plugin->enrol_user($enrol, $event->relateduserid, $enrol->roleid,
+                                        $enrol->enrolstartdate, $enrol->enrolenddate);
+                        if ($enrol->customint2 > 0) {
+                            $adhock = new \enrol_coursecompleted\task\send_welcome();
+                            $adhock->set_custom_data(
+                                [
+                                    'userid' => $event->relateduserid,
+                                    'enrolid' => $enrol->id,
+                                    'courseid' => $enrol->courseid,
+                                    'completedid' => $enrol->customint1,
+                                ]
+                            );
+                            $adhock->set_component('enrol_coursecompleted');
+                            \core\task\manager::queue_adhoc_task($adhock);
+                        }
+                        \enrol_coursecompleted_plugin::keepingroup($enrol, $event->relateduserid);
+                        mark_user_dirty($event->relateduserid);
+                    }
+                } else {
+                    debugging('Role does not exist', DEBUG_DEVELOPER);
+                }
             }
         }
     }

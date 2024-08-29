@@ -36,20 +36,20 @@ use stdClass;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \enrol_coursecompleted
  */
-final class bulk_test extends \advanced_testcase {
+class bulk_test extends \advanced_testcase {
+
     /**
-     * Setup to ensure that forms and locallib are loaded.
+     * Setup to ensure that fixtures are loaded.
      */
     public static function setUpBeforeClass(): void {
         global $CFG;
         require_once($CFG->libdir . '/formslib.php');
-        require_once($CFG->dirroot . '/enrol/locallib.php');
     }
 
     /**
      * Tests initial setup.
      */
-    protected function setUp(): void {
+    protected function setUp():void {
         global $CFG;
         $CFG->enablecompletion = true;
         $this->resetAfterTest(true);
@@ -59,23 +59,26 @@ final class bulk_test extends \advanced_testcase {
     }
 
     /**
-     * Test bulk delete.
-     * @covers \enrol_coursecompleted\bulkdelete
+     * Test bulk deleted.
+     * @covers \enrol_coursecompleted_bulkdelete
      * @covers \enrol_coursecompleted\form\bulkdelete
      */
-    public function test_bulk_delete(): void {
-        global $DB;
+    public function test_bulkdeleted() {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/enrol/coursecompleted/classes/enrol_coursecompleted_bulkdelete.php');
+        require_once($CFG->dirroot . '/enrol/coursecompleted/classes/form/bulkdelete.php');
         $generator = $this->getDataGenerator();
         $plugin = enrol_get_plugin('coursecompleted');
+        $student = $generator->create_user();
         $course1 = $generator->create_course(['shortname' => 'A1', 'enablecompletion' => 1]);
         $course2 = $generator->create_course(['shortname' => 'B1', 'enablecompletion' => 1]);
-        $student = $generator->create_and_enrol($course2, 'student');
+        $generator->enrol_user($student->id, $course2->id);
         $id = $plugin->add_instance($course1, ['customint1' => $course2->id, 'roleid' => 5, 'customint2' => 0]);
         $instance = $DB->get_record('enrol', ['id' => $id]);
         $plugin->enrol_user($instance, $student->id);
         $page = new \moodle_page();
         $manager = new \course_enrolment_manager($page, $course1);
-        $operation = new bulkdelete($manager, $plugin);
+        $operation = new \enrol_coursecompleted_bulkdelete($manager, $plugin);
         $this->assertEquals('deleteselectedusers', $operation->get_identifier());
         $this->assertEquals('Delete selected enrolments on course completion', $operation->get_title());
         $enr = new stdClass();
@@ -85,34 +88,33 @@ final class bulk_test extends \advanced_testcase {
         $user = new stdClass();
         $user->id = $student->id;
         $user->enrolments = [$enr];
-        $properties = new stdClass();
-        $properties->status = ENROL_USER_ACTIVE;
-        $properties->timestart = 100;
-        $properties->timeend = 1000;
         $this->assertfalse($operation->process($manager, [$user], new stdClass()));
         $this->setAdminUser();
-        $this->assertTrue($operation->process($manager, [$user], $properties));
+        $this->assertTrue($operation->process($manager, [$user] , new stdClass()));
         $this->assertNotEmpty($operation->get_form(null, ['users' => [$user]]));
     }
 
     /**
      * Test bulk edit.
-     * @covers \enrol_coursecompleted\bulkedit
+     * @covers \enrol_coursecompleted_bulkedit
      * @covers \enrol_coursecompleted\form\bulkedit
      */
-    public function test_bulk_edit(): void {
-        global $DB;
+    public function test_bulkedit() {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/enrol/coursecompleted/classes/enrol_coursecompleted_bulkedit.php');
+        require_once($CFG->dirroot . '/enrol/coursecompleted/classes/form/bulkedit.php');
         $generator = $this->getDataGenerator();
         $plugin = enrol_get_plugin('coursecompleted');
+        $studentid = $generator->create_user()->id;
         $course1 = $generator->create_course(['shortname' => 'c1', 'enablecompletion' => 1]);
         $course2 = $generator->create_course(['shortname' => 'd1', 'enablecompletion' => 1]);
-        $studentid = $generator->create_and_enrol($course2, 'student')->id;
+        $generator->enrol_user($studentid, $course2->id);
         $id = $plugin->add_instance($course1, ['customint1' => $course2->id, 'roleid' => 5]);
         $instance = $DB->get_record('enrol', ['id' => $id]);
         $plugin->enrol_user($instance, $studentid);
         $page = new \moodle_page();
         $manager = new \course_enrolment_manager($page, $course1);
-        $operation = new bulkedit($manager, $plugin);
+        $operation = new \enrol_coursecompleted_bulkedit($manager, $plugin);
         $this->assertEquals('editselectedusers', $operation->get_identifier());
         $this->assertEquals('Edit selected enrolments on course completion', $operation->get_title());
         $enr = new stdClass();
@@ -129,11 +131,11 @@ final class bulk_test extends \advanced_testcase {
         $properties->timeend = time() + 1000;
         $this->assertfalse($operation->process($manager, [$user], $properties));
         $this->setAdminUser();
-        $this->assertTrue($operation->process($manager, [$user], $properties));
+        $this->assertTrue($operation->process($manager, [$user] , $properties));
         $properties->status = 99;
         $properties->timestart = null;
         $properties->timeend = null;
-        $this->assertTrue($operation->process($manager, [$user], $properties));
+        $this->assertTrue($operation->process($manager, [$user] , $properties));
         $this->assertNotEmpty($operation->get_form(null, ['users' => [$user]]));
     }
 }
